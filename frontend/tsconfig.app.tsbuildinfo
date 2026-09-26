@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/api/health.ts","./src/features/dashboard/dashboardpage.test.tsx","./src/features/dashboard/dashboardpage.tsx","./src/routes/index.tsx","./src/shared/components/healthstatus.tsx","./src/shared/layout/applayout.tsx","./src/test/setup.ts"],"version":"5.6.3"}

@@ -7,19 +7,6 @@
 - **Architecture source of truth:** `docs/target-architecture.md`
 - **API contract:** `openapi.yaml`
 
-## Critical boundary
-
-The adjacent repository `../sai-lee-ai-engineer` is **reference only**.
-
-Do **not** copy or adapt:
-
-- Sai-Lee branding, prompts, DOCX files, logos, or assets
-- Old Streamlit application code
-- Chroma DB or `sai_lee_docs`
-- Synthetic Sai-Lee company/product data
-
-Build a generic greenfield application for this repository.
-
 ## Engineering principles
 
 1. **OpenAPI-first** — Update `openapi.yaml` when adding API endpoints.

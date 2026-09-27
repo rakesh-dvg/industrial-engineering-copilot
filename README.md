@@ -2,154 +2,121 @@
 
 **From Engineering Requirements to Product Decisions**
 
-Industrial Engineering Copilot is a generic, AI-assisted engineering application for industrial distributors, automation integrators, panel builders, and engineering solution providers.
-
-## Phase 1 scope
-
-Phase 1 establishes the project foundation:
-
-- FastAPI backend with versioned API routes
-- React + TypeScript frontend shell
-- PostgreSQL with pgvector extension
-- Redis and MinIO via Docker Compose
-- Alembic migrations for organizations, users, and memberships
-- OpenAPI contract at `openapi.yaml`
-- Health checks and initial automated tests
-- GitHub Actions CI
-- Groq-only LLM foundation (backend-side; extraction/drafting only)
-
-Product intelligence features (RFQ analysis, recommendations, RAG, BOM, proposals) are intentionally deferred to later phases.
-
-## Groq LLM configuration
-
-This project uses **Groq as its only LLM provider**. The API key is read by the FastAPI backend from environment configuration and must never be committed or exposed to the frontend.
-
-Add these values to your local `.env` (see `.env.example`):
+## What it does
 
 ```text
-GROQ_API_KEY=your-groq-api-key
-GROQ_MODEL=openai/gpt-oss-120b
-GROQ_BASE_URL=https://api.groq.com/openai/v1
+Customer RFQ
+→ Requirements (Groq extraction)
+→ Validation (PASS / FAIL / UNKNOWN)
+→ Evidence (datasheet RAG)
+→ Recommendation (deterministic ranking)
+→ Quotation (commercial calculation)
+→ Customer communication (simulated send)
+→ Sales follow-up queue (P0 / P1 / P2)
 ```
 
-Default model: `openai/gpt-oss-120b`
+Industrial Engineering Copilot helps industrial distributors and automation sales teams turn customer RFQs into validated product recommendations, quotations, and prioritized follow-ups — with deterministic engineering compliance and traceable evidence.
 
-Architecture:
+## Business value
 
-```text
-React frontend -> FastAPI backend -> Groq API
-```
+Engineering validation and sales execution usually live in separate tools and email threads. This MVP connects them: sales sees which product **passes** the requirements, **why** (specs + evidence), what to **quote**, and which customers need **follow-up today**.
 
-The browser never receives `GROQ_API_KEY`. Do not add Groq settings to any `VITE_*` variable.
+The AI extracts language from RFQs; it does **not** override PASS/FAIL/UNKNOWN decisions.
 
-Groq is used only for language tasks such as extraction, explanation, and drafting. Deterministic engineering validation (PASS/FAIL/UNKNOWN) remains outside the LLM layer.
+## Demo
+
+**Customer:** ABC Manufacturing — 10 industrial Ethernet switches (24 VDC, 5+ ports, DIN rail, Modbus TCP, -20°C).
+
+| Product | Validation |
+|---------|------------|
+| NS-SW-005 | PASS → recommended → Q-2026-0001 @ USD 1,850 |
+| VIS-SW-003 | FAIL |
+| AC-SW-008 | UNKNOWN |
+
+After simulated email send, **Today's Sales Follow-ups** shows Apex (P0), ABC (P1), and Delta (P2) — Open Quotation Value **USD 14,500**.
+
+Full walkthrough: [docs/CEO-demo-script.md](docs/CEO-demo-script.md)
 
 ## Architecture
 
-See [docs/target-architecture.md](docs/target-architecture.md) for the authoritative design.
+- **Product design:** [docs/target-architecture.md](docs/target-architecture.md)
+- **AWS MVP deployment:** [docs/architecture.md](docs/architecture.md)
 
-## Prerequisites
+## Local startup
 
-- Docker and Docker Compose
-- Python 3.12+
-- Node.js 22+
+**Prerequisites:** Docker, Python 3.12+, Node.js 22+, Groq API key in `.env`
 
-## Quick start
-
-### 1. Configure environment
-
-```bash
+```powershell
 cp .env.example .env
+.\scripts\start-local.ps1
 ```
 
-### 2. Start infrastructure
+Then in two terminals:
 
-```bash
-docker compose up -d postgres redis minio
-```
-
-### 3. Backend setup
-
-```bash
+```powershell
+# Terminal 1 — backend
 cd backend
-python -m venv .venv
-
-# Windows PowerShell
 .\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8020
 
-pip install -e ".[dev]"
-alembic upgrade head
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 4. Frontend setup
-
-In a second terminal:
-
-```bash
+# Terminal 2 — frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-Open:
-
 - Frontend: http://localhost:5173
-- API docs: http://localhost:8000/docs
-- OpenAPI JSON: http://localhost:8000/openapi.json
+- API docs: http://localhost:8020/docs
 
-## Full stack with Docker Compose
+**Migrations before seeds:** `alembic upgrade head` → `python -m app.seed.catalog` → `python -m app.seed.followups` → `python -m app.seed.documents`
 
-```bash
-docker compose up --build
-```
+Reset local demo data: `.\scripts\reset-demo.ps1`
 
-This starts PostgreSQL, Redis, MinIO, backend, and frontend.
+## AWS MVP deployment
+
+Deploy to AWS for a single public CEO demo URL (ECS Fargate + ALB + RDS + S3):
+
+→ **[docs/aws-mvp-deployment.md](docs/aws-mvp-deployment.md)**
+
+Production Docker files: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.prod.yml`
 
 ## Testing
 
-### Backend
-
-Ensure PostgreSQL is running, then:
-
-```bash
+```powershell
+# Backend
 cd backend
-pip install -e ".[dev]"
-
-# Optional: create a dedicated test database
-# docker exec -it iec-postgres psql -U iec -d iec -c "CREATE DATABASE iec_test;"
-
-pytest
 ruff check .
-```
+pytest -q
 
-### Frontend
-
-```bash
+# Frontend
 cd frontend
-npm install
+npm run lint
 npm run test
 npm run build
-npm run lint
+
+# OpenAPI contract
+cd ..
+python .github/scripts/check_openapi_paths.py
 ```
 
-## API contract
+## Limitations
 
-The repository-level OpenAPI contract lives at [openapi.yaml](openapi.yaml). FastAPI exposes a generated schema at `/openapi.json`. Keep the contract aligned as endpoints are added in later phases.
+MVP scope: simulated email, synthetic demo data, no CRM, no HA/autoscaling on AWS, Groq dependency.
 
-## Project structure
+→ [docs/limitations-roadmap.md](docs/limitations-roadmap.md)
 
-```text
-backend/          FastAPI application, Alembic, tests
-frontend/         React + Vite SPA
-docs/             Architecture and design documents
-openapi.yaml      API contract (OpenAPI 3.1)
-docker-compose.yml
-.github/workflows/ci.yml
-```
+## Future roadmap
+
+CRM integration, real email, PDF quotations, enterprise auth, production observability, infrastructure-as-code, autoscaling/HA — see [docs/limitations-roadmap.md](docs/limitations-roadmap.md).
 
 ## Related documents
 
-- [docs/target-architecture.md](docs/target-architecture.md)
-- [product-spec.md](product-spec.md)
-- [AGENTS.md](AGENTS.md)
+| Document | Purpose |
+|----------|---------|
+| [docs/CEO-presentation.md](docs/CEO-presentation.md) | Business narrative |
+| [docs/CEO-demo-script.md](docs/CEO-demo-script.md) | 3–5 minute demo script |
+| [docs/technical-decisions.md](docs/technical-decisions.md) | Why key choices were made |
+| [docs/aws-mvp-deployment.md](docs/aws-mvp-deployment.md) | Step-by-step AWS guide |
+| [docs/screenshots/README.md](docs/screenshots/README.md) | Manual screenshot checklist |
+| [AGENTS.md](AGENTS.md) | Agent/developer instructions |
+| [openapi.yaml](openapi.yaml) | API contract |

@@ -1,0 +1,21 @@
+--- Page 1 ---
+Apex Controls
+AC-SW-008 Industrial Ethernet Switch
+Technical Datasheet
+
+Electrical Specifications
+Input Voltage: 24 VDC nominal
+
+--- Page 2 ---
+Network Interface
+8 x 10/100/1000 Mbps Ethernet ports
+
+Mechanical
+DIN rail mounting supported
+
+--- Page 3 ---
+Protocols
+Modbus TCP supported
+
+General
+This datasheet does not publish a minimum operating temperature specification.

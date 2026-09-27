@@ -4,6 +4,10 @@ Groq is used for extraction, explanation, and drafting only.
 Deterministic engineering validation remains outside this layer.
 """
 
+from typing import Annotated
+
+from fastapi import Depends
+
 from app.config import Settings, get_settings
 from app.llm.base import LLMClient, TextGenerationRequest, TextGenerationResponse
 from app.llm.config import (
@@ -17,9 +21,11 @@ from app.llm.errors import LLMConfigurationError, LLMError, LLMProviderError
 from app.llm.groq_client import GroqLLMClient
 
 
-def get_llm_client(settings: Settings | None = None) -> GroqLLMClient:
+def get_llm_client(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> GroqLLMClient:
     """Return the project's sole LLM client (Groq)."""
-    return GroqLLMClient(settings or get_settings())
+    return GroqLLMClient(settings)
 
 
 __all__ = [

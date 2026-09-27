@@ -5,8 +5,14 @@ info:
   description: |
     From Engineering Requirements to Product Decisions.
 
-    Phase 1 exposes health endpoints and foundational schemas. Product, RFQ,
-    recommendation, and document endpoints are defined in later phases.
+    Phase 1 exposes health endpoints and foundational schemas.
+    Phase 2 exposes read-only product catalog APIs for manufacturers, categories,
+    products, specifications, and synthetic pricing.
+    Phase 3 exposes RFQ requirement extraction via Groq structured output.
+    Phase 4 exposes deterministic engineering validation (PASS/FAIL/UNKNOWN).
+    Phase 6 exposes datasheet ingestion, pgvector retrieval, and requirement evidence.
+    Phase 7 exposes deterministic quotation generation from catalog pricing.
+    Phase 5A exposes deterministic product recommendation and decision support.
   contact:
     name: Industrial Engineering Copilot
 servers:
@@ -15,6 +21,22 @@ servers:
 tags:
   - name: Health
     description: Service health and dependency checks
+  - name: Catalog
+    description: Product catalog, specifications, and synthetic pricing
+  - name: RFQ
+    description: RFQ requirement extraction
+  - name: Validation
+    description: Deterministic requirement validation against product specifications
+  - name: Documents
+    description: Product datasheet upload and ingestion
+  - name: Evidence
+    description: Datasheet evidence linked to validation requirements
+  - name: Quotations
+    description: Customer quotation drafts from validated products and catalog pricing
+  - name: Recommendations
+    description: Deterministic product recommendation from validation and catalog data
+  - name: Sales
+    description: Sales follow-up queue for sent quotations
 paths:
   /health:
     get:
@@ -40,6 +62,572 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiHealthResponse"
+  /api/v1/manufacturers:
+    get:
+      tags: [Catalog]
+      summary: List manufacturers
+      operationId: listManufacturers
+      responses:
+        "200":
+          description: Manufacturer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManufacturerListResponse"
+  /api/v1/product-categories:
+    get:
+      tags: [Catalog]
+      summary: List product categories
+      operationId: listProductCategories
+      responses:
+        "200":
+          description: Product category list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductCategoryListResponse"
+  /api/v1/products:
+    get:
+      tags: [Catalog]
+      summary: List products
+      operationId: listProducts
+      parameters:
+        - name: category
+          in: query
+          description: Category slug or name
+          schema:
+            type: string
+        - name: manufacturer
+          in: query
+          description: Manufacturer name
+          schema:
+            type: string
+        - name: model_number
+          in: query
+          description: Exact model number
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+  /api/v1/products/{product_id}:
+    get:
+      tags: [Catalog]
+      summary: Get product detail
+      operationId: getProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetailResponse"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/rfqs/extract:
+    post:
+      tags: [RFQ]
+      summary: Extract structured requirements from RFQ text
+      operationId: extractRfqRequirements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RfqExtractRequest"
+      responses:
+        "200":
+          description: Structured RFQ requirements extracted by Groq
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RfqExtractResponse"
+        "422":
+          description: Validation error or empty RFQ text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Groq provider or structured-output validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Groq is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/validation/products/{product_id}:
+    post:
+      tags: [Validation]
+      summary: Validate requirements against one product
+      operationId: validateProduct
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateProductRequest"
+      responses:
+        "200":
+          description: Product validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductValidationResult"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/validation/products:
+    post:
+      tags: [Validation]
+      summary: Validate requirements against multiple products
+      operationId: validateProducts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateProductsRequest"
+      responses:
+        "200":
+          description: Multi-product validation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateProductsResponse"
+        "404":
+          description: One or more products not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/recommendations/products:
+    post:
+      tags: [Recommendations]
+      summary: Recommend eligible products from deterministic validation
+      operationId: recommendProducts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendProductsRequest"
+      responses:
+        "200":
+          description: Recommendation result with primary, alternatives, and exclusions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResult"
+        "404":
+          description: One or more products not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error or no candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/documents/products/{product_id}/ingest:
+    post:
+      tags: [Documents]
+      summary: Upload and ingest a product datasheet
+      operationId: ingestProductDatasheet
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+      responses:
+        "200":
+          description: Datasheet ingested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentIngestResponse"
+        "400":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/evidence/products/{product_id}:
+    post:
+      tags: [Evidence]
+      summary: Validation plus datasheet evidence for one product
+      operationId: getProductEvidence
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductEvidenceRequest"
+      responses:
+        "200":
+          description: Validation with requirement evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEvidenceResult"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/evidence/products:
+    post:
+      tags: [Evidence]
+      summary: Validation plus datasheet evidence for multiple products
+      operationId: getProductsEvidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductsEvidenceRequest"
+      responses:
+        "200":
+          description: Multi-product evidence results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductsEvidenceResponse"
+        "404":
+          description: One or more products not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quotations:
+    get:
+      tags: [Quotations]
+      summary: List quotations
+      operationId: listQuotations
+      responses:
+        "200":
+          description: Quotation list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationListResponse"
+    post:
+      tags: [Quotations]
+      summary: Create a quotation draft from a validated product
+      operationId: createQuotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuotationRequest"
+      responses:
+        "200":
+          description: Quotation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationResponse"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation, pricing, or request error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quotations/{quotation_id}:
+    get:
+      tags: [Quotations]
+      summary: Get quotation detail
+      operationId: getQuotation
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Quotation detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationResponse"
+        "404":
+          description: Quotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quotations/{quotation_id}/status:
+    patch:
+      tags: [Quotations]
+      summary: Update quotation review status
+      operationId: updateQuotationStatus
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuotationStatusRequest"
+      responses:
+        "200":
+          description: Updated quotation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationResponse"
+        "404":
+          description: Quotation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quotations/{quotation_id}/communication:
+    get:
+      tags: [Quotations]
+      summary: Get quotation customer communication draft
+      operationId: getQuotationCommunication
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Communication draft if present
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationCommunicationResponse"
+    post:
+      tags: [Quotations]
+      summary: Create quotation customer communication draft
+      operationId: createQuotationCommunication
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuotationCommunicationRequest"
+      responses:
+        "200":
+          description: Communication draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationCommunicationResponse"
+    patch:
+      tags: [Quotations]
+      summary: Update quotation customer communication draft
+      operationId: updateQuotationCommunication
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuotationCommunicationRequest"
+      responses:
+        "200":
+          description: Updated communication draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationCommunicationResponse"
+  /api/v1/quotations/{quotation_id}/send:
+    post:
+      tags: [Quotations]
+      summary: Send quotation to customer after sales review
+      operationId: sendQuotationToCustomer
+      parameters:
+        - name: quotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Quotation marked sent and follow-up created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendQuotationResponse"
+        "422":
+          description: Send blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/sales/follow-ups:
+    get:
+      tags: [Sales]
+      summary: List sales follow-ups
+      operationId: listSalesFollowUps
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, COMPLETED]
+        - name: due_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: sent_only
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Follow-up list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesFollowUpListResponse"
+  /api/v1/sales/follow-ups/{follow_up_id}:
+    patch:
+      tags: [Sales]
+      summary: Update sales follow-up
+      operationId: updateSalesFollowUp
+      parameters:
+        - name: follow_up_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSalesFollowUpRequest"
+      responses:
+        "200":
+          description: Updated follow-up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesFollowUpResponse"
 components:
   schemas:
     HealthStatus:
@@ -143,3 +731,948 @@ components:
         role:
           type: string
           enum: [admin, engineer, sales, reviewer, viewer]
+    ManufacturerSummary:
+      type: object
+      required: [id, name, is_active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+    ManufacturerListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManufacturerSummary"
+    ProductCategorySummary:
+      type: object
+      required: [id, name, slug, is_active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+    ProductCategoryListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductCategorySummary"
+    ProductSpecification:
+      type: object
+      required: [spec_key]
+      properties:
+        spec_key:
+          type: string
+          examples: [ethernet_ports]
+        numeric_value:
+          type: string
+          nullable: true
+        text_value:
+          type: string
+          nullable: true
+        boolean_value:
+          type: boolean
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+    ProductPricing:
+      type: object
+      required: [unit_price, currency, discount_percent, lead_time_days, is_active]
+      properties:
+        unit_price:
+          type: string
+        currency:
+          type: string
+          examples: [USD]
+        discount_percent:
+          type: string
+        lead_time_days:
+          type: integer
+        price_valid_until:
+          type: string
+          format: date
+          nullable: true
+        is_active:
+          type: boolean
+    ProductListItem:
+      type: object
+      required: [id, model_number, name, is_active, manufacturer, category]
+      properties:
+        id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        manufacturer:
+          $ref: "#/components/schemas/ManufacturerSummary"
+        category:
+          $ref: "#/components/schemas/ProductCategorySummary"
+        pricing:
+          $ref: "#/components/schemas/ProductPricing"
+          nullable: true
+    ProductListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductListItem"
+        total:
+          type: integer
+    ProductDetailResponse:
+      type: object
+      required:
+        - id
+        - model_number
+        - name
+        - is_active
+        - created_at
+        - updated_at
+        - manufacturer
+        - category
+        - specifications
+      properties:
+        id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        manufacturer:
+          $ref: "#/components/schemas/ManufacturerSummary"
+        category:
+          $ref: "#/components/schemas/ProductCategorySummary"
+        specifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSpecification"
+        pricing:
+          $ref: "#/components/schemas/ProductPricing"
+          nullable: true
+    RfqExtractRequest:
+      type: object
+      required: [raw_text]
+      properties:
+        raw_text:
+          type: string
+          minLength: 1
+          description: Customer RFQ text to extract requirements from
+    StructuredRequirement:
+      type: object
+      required: [spec_key, operator]
+      properties:
+        spec_key:
+          type: string
+          description: Canonical engineering specification key
+        operator:
+          type: string
+          enum: [eq, neq, gt, gte, lt, lte, contains, in]
+        value:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        required:
+          type: boolean
+          default: true
+        priority:
+          type: string
+          enum: [must_have, preferred]
+          nullable: true
+        source_text:
+          type: string
+          nullable: true
+    AmbiguousRequirementNote:
+      type: object
+      required: [source_text]
+      properties:
+        source_text:
+          type: string
+        description:
+          type: string
+          nullable: true
+    RfqExtractResponse:
+      type: object
+      required: [requirements, ambiguous_notes]
+      properties:
+        customer_name:
+          type: string
+          nullable: true
+        customer_reference:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+          nullable: true
+          minimum: 1
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+        ambiguous_notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AmbiguousRequirementNote"
+    ValidationStatus:
+      type: string
+      enum: [PASS, FAIL, UNKNOWN]
+    RequirementValidationResult:
+      type: object
+      required:
+        - spec_key
+        - operator
+        - required
+        - status
+        - details
+      properties:
+        spec_key:
+          type: string
+        operator:
+          type: string
+          enum: [eq, neq, gt, gte, lt, lte, contains, in]
+        required:
+          type: boolean
+        priority:
+          type: string
+          enum: [must_have, preferred]
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ValidationStatus"
+        required_value:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+        required_unit:
+          type: string
+          nullable: true
+        actual_value:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+        actual_unit:
+          type: string
+          nullable: true
+        details:
+          type: string
+        source_text:
+          type: string
+          nullable: true
+    ProductValidationResult:
+      type: object
+      required: [product_id, model_number, status, results]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        status:
+          $ref: "#/components/schemas/ValidationStatus"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementValidationResult"
+    ValidateProductRequest:
+      type: object
+      required: [requirements]
+      properties:
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    ValidateProductsRequest:
+      type: object
+      required: [product_ids, requirements]
+      properties:
+        product_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    ValidateProductsResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductValidationResult"
+    EvidenceCoverage:
+      type: object
+      required: [supported, required]
+      properties:
+        supported:
+          type: integer
+          minimum: 0
+        required:
+          type: integer
+          minimum: 0
+    RecommendationItem:
+      type: object
+      required:
+        - product_id
+        - model_number
+        - manufacturer_name
+        - product_name
+        - validation_status
+        - recommendation_score
+        - evidence_coverage
+        - reasons
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        manufacturer_name:
+          type: string
+        product_name:
+          type: string
+        validation_status:
+          $ref: "#/components/schemas/ValidationStatus"
+        recommendation_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        evidence_coverage:
+          $ref: "#/components/schemas/EvidenceCoverage"
+        unit_price:
+          type: string
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        lead_time_days:
+          type: integer
+          nullable: true
+        reasons:
+          type: array
+          items:
+            type: string
+    ExcludedProduct:
+      type: object
+      required: [product_id, model_number, validation_status, reason]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        validation_status:
+          $ref: "#/components/schemas/ValidationStatus"
+        reason:
+          type: string
+    RecommendProductsRequest:
+      type: object
+      required: [requirements]
+      properties:
+        product_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    RecommendationResult:
+      type: object
+      required:
+        - requirements_summary
+        - candidate_count
+        - eligible_count
+        - alternatives
+        - excluded_products
+      properties:
+        requirements_summary:
+          type: string
+        candidate_count:
+          type: integer
+          minimum: 0
+        eligible_count:
+          type: integer
+          minimum: 0
+        primary_recommendation:
+          $ref: "#/components/schemas/RecommendationItem"
+          nullable: true
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecommendationItem"
+        excluded_products:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcludedProduct"
+        message:
+          type: string
+          nullable: true
+    EvidenceStatus:
+      type: string
+      enum: [found, not_found, insufficient]
+    EvidenceItem:
+      type: object
+      required:
+        - text
+        - document_id
+        - chunk_id
+        - document_title
+        - document_filename
+        - similarity_score
+      properties:
+        text:
+          type: string
+        page_number:
+          type: integer
+          nullable: true
+        document_id:
+          type: string
+          format: uuid
+        chunk_id:
+          type: string
+          format: uuid
+        document_title:
+          type: string
+        document_filename:
+          type: string
+        similarity_score:
+          type: number
+          minimum: 0
+          maximum: 1
+    RequirementEvidenceResult:
+      type: object
+      required:
+        - spec_key
+        - operator
+        - required
+        - status
+        - details
+        - evidence_status
+        - evidence
+      properties:
+        spec_key:
+          type: string
+        operator:
+          type: string
+        required:
+          type: boolean
+        priority:
+          type: string
+          enum: [must_have, preferred]
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ValidationStatus"
+        required_value:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+        required_unit:
+          type: string
+          nullable: true
+        actual_value:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+        actual_unit:
+          type: string
+          nullable: true
+        details:
+          type: string
+        source_text:
+          type: string
+          nullable: true
+        evidence_status:
+          $ref: "#/components/schemas/EvidenceStatus"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceItem"
+    ProductEvidenceResult:
+      type: object
+      required: [product_id, model_number, status, requirements]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        status:
+          $ref: "#/components/schemas/ValidationStatus"
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementEvidenceResult"
+    ProductEvidenceRequest:
+      type: object
+      required: [requirements]
+      properties:
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    ProductsEvidenceRequest:
+      type: object
+      required: [product_ids, requirements]
+      properties:
+        product_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    ProductsEvidenceResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductEvidenceResult"
+    DocumentIngestResponse:
+      type: object
+      required:
+        - document_id
+        - product_id
+        - title
+        - filename
+        - mime_type
+        - ingest_status
+        - chunk_count
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        filename:
+          type: string
+        mime_type:
+          type: string
+        page_count:
+          type: integer
+          nullable: true
+        ingest_status:
+          type: string
+        chunk_count:
+          type: integer
+    QuotationStatus:
+      type: string
+      enum: [DRAFT, REVIEWED, APPROVED, READY_TO_SEND, SENT]
+    CommunicationStatus:
+      type: string
+      enum: [DRAFT, READY_TO_SEND, SENT]
+    FollowUpPriority:
+      type: string
+      enum: [P0, P1, P2]
+    FollowUpStatus:
+      type: string
+      enum: [OPEN, COMPLETED]
+    CreateQuotationRequest:
+      type: object
+      required: [customer_name, product_id, quantity, requirements]
+      properties:
+        customer_name:
+          type: string
+        customer_email:
+          type: string
+          nullable: true
+        customer_reference:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        product_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        discount_percent:
+          type: string
+          default: "0"
+        validity_days:
+          type: integer
+          default: 30
+          minimum: 1
+        requirements:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StructuredRequirement"
+    QuotationLineResponse:
+      type: object
+      required:
+        - id
+        - product_id
+        - model_number
+        - description
+        - quantity
+        - unit_price
+        - currency
+        - discount_percent
+        - line_subtotal
+        - line_total
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        model_number:
+          type: string
+        description:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: string
+        currency:
+          type: string
+        discount_percent:
+          type: string
+        line_subtotal:
+          type: string
+        line_total:
+          type: string
+    QuotationResponse:
+      type: object
+      required:
+        - id
+        - quotation_number
+        - status
+        - customer_name
+        - currency
+        - validity_days
+        - lead_time_days
+        - technical_status
+        - subtotal
+        - discount_percent
+        - discount_amount
+        - total
+        - lines
+        - validation_snapshot
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        quotation_number:
+          type: string
+        status:
+          $ref: "#/components/schemas/QuotationStatus"
+        customer_name:
+          type: string
+        customer_email:
+          type: string
+          nullable: true
+        customer_reference:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        validity_days:
+          type: integer
+        lead_time_days:
+          type: integer
+        technical_status:
+          $ref: "#/components/schemas/ValidationStatus"
+        subtotal:
+          type: string
+        discount_percent:
+          type: string
+        discount_amount:
+          type: string
+        total:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotationLineResponse"
+        validation_snapshot:
+          type: object
+          additionalProperties: true
+        evidence_snapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    QuotationListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotationResponse"
+        total:
+          type: integer
+    UpdateQuotationStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/QuotationStatus"
+    QuotationCommunicationResponse:
+      type: object
+      required:
+        - id
+        - quotation_id
+        - customer_name
+        - customer_email
+        - subject
+        - body
+        - status
+        - demo_mode
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        quotation_id:
+          type: string
+          format: uuid
+        customer_name:
+          type: string
+        customer_email:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          $ref: "#/components/schemas/CommunicationStatus"
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        demo_mode:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateQuotationCommunicationRequest:
+      type: object
+      properties:
+        customer_email:
+          type: string
+          nullable: true
+    UpdateQuotationCommunicationRequest:
+      type: object
+      properties:
+        customer_email:
+          type: string
+          nullable: true
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          $ref: "#/components/schemas/CommunicationStatus"
+    SendQuotationResponse:
+      type: object
+      required: [quotation_id, communication, send_detail, demo_mode]
+      properties:
+        quotation_id:
+          type: string
+          format: uuid
+        communication:
+          $ref: "#/components/schemas/QuotationCommunicationResponse"
+        send_detail:
+          type: string
+        demo_mode:
+          type: boolean
+    FollowUpQuotationSummary:
+      type: object
+      required: [id, quotation_number, status, currency, total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quotation_number:
+          type: string
+        status:
+          type: string
+        currency:
+          type: string
+        total:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+    SalesFollowUpResponse:
+      type: object
+      required:
+        - id
+        - quotation_id
+        - customer_name
+        - customer_email
+        - quotation_number
+        - follow_up_date
+        - priority
+        - status
+        - quotation
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        quotation_id:
+          type: string
+          format: uuid
+        customer_name:
+          type: string
+        customer_email:
+          type: string
+        quotation_number:
+          type: string
+        follow_up_date:
+          type: string
+          format: date
+        priority:
+          $ref: "#/components/schemas/FollowUpPriority"
+        status:
+          $ref: "#/components/schemas/FollowUpStatus"
+        notes:
+          type: string
+          nullable: true
+        quotation:
+          $ref: "#/components/schemas/FollowUpQuotationSummary"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    SalesFollowUpListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesFollowUpResponse"
+        total:
+          type: integer
+    UpdateSalesFollowUpRequest:
+      type: object
+      properties:
+        follow_up_date:
+          type: string
+          format: date
+        priority:
+          $ref: "#/components/schemas/FollowUpPriority"
+        status:
+          $ref: "#/components/schemas/FollowUpStatus"
+        notes:
+          type: string
+          nullable: true

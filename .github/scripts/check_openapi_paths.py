@@ -27,7 +27,7 @@ def main() -> int:
             print(f"  - {path}")
         return 1
 
-    print("OpenAPI Phase 1 path check passed.")
+    print("OpenAPI contract path check passed.")
     return 0
 
 

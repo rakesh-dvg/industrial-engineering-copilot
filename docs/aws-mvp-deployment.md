@@ -94,11 +94,14 @@ From the repository root:
 docker build -t industrial-engineering-copilot-backend ./backend
 ```
 
-**Frontend** (empty API base URL — same-origin `/api/*` via ALB):
+**Frontend** (empty `VITE_API_BASE_URL`; nginx proxies `/api/*` to `BACKEND_API_URL`):
 
 ```powershell
 docker build -t industrial-engineering-copilot-frontend --target production --build-arg VITE_API_BASE_URL= ./frontend
+docker run --rm -p 8080:80 -e BACKEND_API_URL=http://<backend-host>:8000 industrial-engineering-copilot-frontend
 ```
+
+With an ALB, route `/api/*` to the backend instead of setting `BACKEND_API_URL`. Direct ECS public IPs are ephemeral — update `BACKEND_API_URL` and restart the frontend when the backend address changes.
 
 Verify locally (optional):
 

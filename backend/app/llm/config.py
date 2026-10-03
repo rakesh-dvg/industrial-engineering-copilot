@@ -38,12 +38,21 @@ class GroqConfigurationStatus:
         )
 
 
+def normalize_groq_base_url(base_url: str) -> str:
+    """Groq Python SDK appends ``/openai/v1/...`` to ``base_url``; strip duplicate suffixes."""
+    url = base_url.strip().rstrip("/")
+    openai_suffix = "/openai/v1"
+    while url.endswith(openai_suffix):
+        url = url[: -len(openai_suffix)].rstrip("/")
+    return url or "https://api.groq.com"
+
+
 def get_groq_settings(settings: Settings) -> GroqSettings:
     api_key = settings.groq_api_key.strip() if settings.groq_api_key else None
     return GroqSettings(
         api_key=api_key,
         model=settings.groq_model,
-        base_url=settings.groq_base_url,
+        base_url=normalize_groq_base_url(settings.groq_base_url),
     )
 
 

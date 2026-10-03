@@ -21,7 +21,7 @@
         { "name": "ENVIRONMENT", "value": "production" },
         { "name": "DEBUG", "value": "false" },
         { "name": "GROQ_MODEL", "value": "openai/gpt-oss-120b" },
-        { "name": "GROQ_BASE_URL", "value": "https://api.groq.com/openai/v1" },
+        { "name": "GROQ_BASE_URL", "value": "https://api.groq.com" },
         { "name": "MINIO_ENDPOINT", "value": "s3.<AWS_REGION>.amazonaws.com" },
         { "name": "MINIO_BUCKET", "value": "<S3_BUCKET_NAME>" },
         { "name": "MINIO_SECURE", "value": "true" },

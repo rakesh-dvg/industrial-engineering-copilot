@@ -5,9 +5,6 @@
 **Document type:** Target architecture (design only)  
 **Status:** Proposed — not implemented  
 **Date:** 2026-09-26  
-**Relationship to POC:** The existing `sai-lee-ai-engineer` repository remains a reference implementation only. This document describes a **new application** to be built separately. Do not extend the Streamlit monolith directly.
-
-**Related audits:** `docs/poc-audit.md`, `docs/data-audit.md`
 
 ---
 
@@ -43,9 +40,8 @@ The LLM assists with extraction, explanation, and drafting. **Deterministic serv
 1. **Autonomous electrical design approval** — The system assists engineers; it does not replace qualified engineering sign-off.
 2. **ERP / CRM replacement** — No pricing engine, inventory sync, or customer account management beyond RFQ context.
 3. **Real manufacturer catalog licensing** — Initial dataset is synthetic; no dependency on proprietary distributor line cards.
-4. **Extending the POC Streamlit app** — The existing chatbot is reference-only.
-5. **LLM-only product matching** — Recommendations must not rely on model reasoning alone for spec validation.
-6. **Universal document understanding** — Phase 1 focuses on DOCX/PDF with extractable text and tables; scanned OCR is out of scope initially.
+4. **LLM-only product matching** — Recommendations must not rely on model reasoning alone for spec validation.
+5. **Universal document understanding** — Phase 1 focuses on DOCX/PDF with extractable text and tables; scanned OCR is out of scope initially.
 
 ---
 
@@ -1072,7 +1068,7 @@ Dashboard
 - **LLM labeled** — Explanations and proposals marked "AI-generated draft — verify before use."
 - **No chat-only workflow** — Structured screens, not a single chatbot (assistant panel optional as secondary).
 
-### Reusable POC ideas (not code)
+### Reusable workflow ideas
 
 - Demo scenario list → guided RFQ templates on Dashboard.
 - Historical "sources" panel → Evidence drawer component.
@@ -1233,9 +1229,9 @@ Agents run with READ + DRAFT only. Approval endpoints require interactive user s
 | Application note | Prose + compatibility notes (for RAG only) |
 | RFQ letter | Unstructured customer ask |
 
-### POC data — do not migrate
+### Seed data guidelines
 
-Do not copy Sai-Lee DOCX files, logo, Chroma DB, or hardcoded context. Reuse **category themes** only.
+Use fictional synthetic catalog data only. Reuse **category themes** from industrial engineering domains; do not import proprietary distributor line cards or hardcoded third-party context.
 
 ---
 
@@ -1469,8 +1465,6 @@ backend/
 .github/workflows/
 docs/
   target-architecture.md
-  poc-audit.md
-  data-audit.md
   agent-extension-pack.md
 security/
 ops/
@@ -1484,7 +1478,7 @@ mcp-server/
 
 | Phase | Deliverable | Depends on |
 |---|---|---|
-| **0** | Audits complete (`poc-audit.md`, `data-audit.md`) | — |
+| **0** | Architecture and product specification complete | — |
 | **1** | New repo scaffold, `product-spec.md`, `AGENTS.md`, `.env.example`, empty OpenAPI skeleton | 0 |
 | **2** | PostgreSQL schema (Alembic), auth, org scoping, core product CRUD API | 1 |
 | **3** | Docker Compose, CI lint+test pipeline | 2 |
@@ -1501,8 +1495,6 @@ mcp-server/
 | **14** | Agent extension pack (MCP, permissions, hooks) | 13 |
 | **15** | Security artifacts, audit UI, final documentation | 13–14 |
 
-POC repository remains untouched as reference during Phases 1–15.
-
 ---
 
 ## Risks and Decisions
@@ -1510,26 +1502,26 @@ POC repository remains untouched as reference during Phases 1–15.
 | Risk / decision | Mitigation |
 |---|---|
 | **LLM invents specs** | Deterministic validation; UNKNOWN when missing; ban spec generation in prompts |
-| **Table-blind ingest (POC failure mode)** | Structured table rows + spec mapper; never paragraph-only for datasheets |
+| **Table-blind ingest** | Structured table rows + spec mapper; never paragraph-only for datasheets |
 | **Unit mismatch** | spec_definitions + unit_family + conversion layer |
 | **pgvector scale** | Sufficient for MVP; monitor latency; index tuning (HNSW) |
 | **Embedding model lock-in** | Store `embedding_model_version`; reindex job |
 | **Over-scoping ERP features** | Strict non-goals; RFQ → BOM → proposal only |
 | **Tenant data leak** | Org middleware + integration tests on every resource |
 | **Agent over-permission** | READ/DRAFT/HUMAN APPROVAL matrix; no auto-approve |
-| **Synthetic data too thin (POC repeat)** | Require tables, numeric specs, golden tests before demo |
+| **Synthetic data too thin** | Require tables, numeric specs, golden tests before demo |
 | **OpenAPI drift** | CI contract test; codegen or strict validation |
 | **Document extraction errors** | `confidence=extracted` vs `verified`; human catalog admin review |
 | **Zoomcamp rubric changes** | Track draft repo; design already exceeds minimum full-stack shape |
 
 ### Key decisions recorded
 
-1. **Greenfield app** — do not extend Streamlit POC.
+1. **Greenfield app** — FastAPI backend and React frontend implemented from scratch.
 2. **PostgreSQL + pgvector** — single database for relational + vector.
 3. **OpenAPI-first** — contract before implementation drift.
 4. **PASS/FAIL/UNKNOWN** — mandatory for requirement validation.
 5. **Hybrid retrieval** — SQL for specs, vectors for documents, LLM for language tasks only.
-6. **Fictional synthetic catalog** — no Sai-Lee or real distributor line cards in seed data.
+6. **Fictional synthetic catalog** — no real distributor line cards in seed data.
 7. **Evidence UI** — every recommendation cell links to structured spec or document citation.
 
 ---

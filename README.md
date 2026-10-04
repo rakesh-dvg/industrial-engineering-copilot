@@ -4,8 +4,6 @@
 
 Industrial Engineering Copilot is a generic, AI-assisted engineering application for industrial distributors, automation integrators, panel builders, and engineering solution providers.
 
-This repository is a **greenfield** implementation. The adjacent `sai-lee-ai-engineer` project is reference-only and must not be copied into this codebase.
-
 ## Phase 1 scope
 
 Phase 1 establishes the project foundation:

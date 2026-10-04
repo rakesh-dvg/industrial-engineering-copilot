@@ -50,8 +50,7 @@ Industrial Engineering Copilot uses **Groq only** for LLM capabilities. The back
 - Autonomous engineering sign-off
 - ERP/CRM replacement
 - Real manufacturer catalog licensing
-- Extending the legacy Streamlit POC
 
 ## Branding
 
-This application is branded exclusively as **Industrial Engineering Copilot**. Do not import Sai-Lee branding, assets, prompts, or data from the reference POC.
+This application is branded exclusively as **Industrial Engineering Copilot**.

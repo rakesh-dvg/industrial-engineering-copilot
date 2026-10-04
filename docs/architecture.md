@@ -1,6 +1,32 @@
 # Architecture
 
-## AWS MVP Deployment Architecture
+## Local runtime (current)
+
+Reviewers run the MVP with **Docker Compose** on a developer machine:
+
+```text
+React / Vite (dev)  or  Nginx (prod compose)
+        ↓
+FastAPI (uvicorn)
+        ↓
+SQLAlchemy (async)
+        ↓
+PostgreSQL (+ pgvector)
+
+FastAPI
+        ↓
+Groq LLM (RFQ extraction / drafting only)
+```
+
+Supporting services in `docker-compose.yml`: **Redis**, **MinIO** (S3-compatible documents).
+
+Production frontend image uses **`frontend/nginx.conf.template`** with runtime `BACKEND_API_URL`.
+
+See [deployment.md](deployment.md) and [database.md](database.md).
+
+## AWS MVP deployment architecture (historical)
+
+> **AWS infrastructure used for the demonstration has been decommissioned.** The diagram below documents what was successfully deployed and tested for the CEO demo; it is not live infrastructure.
 
 This diagram describes the **Phase 10 minimum AWS deployment** used for the CEO demo. It is intentionally small, single-region, and not highly available.
 

@@ -1,5 +1,7 @@
 # AWS MVP Deployment Guide
 
+> **AWS infrastructure used for the demonstration has been decommissioned.** The repository remains locally reproducible using Docker Compose. This guide is retained as evidence of the completed deployment learning objective — do **not** recreate resources unless you own the AWS account and accept the cost.
+
 Minimum AWS deployment for the Industrial Engineering Copilot CEO demo.
 
 **Goal:** one public URL where the CEO can run the full sales workflow.

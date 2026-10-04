@@ -1,7 +1,6 @@
 """Phase 9 end-to-end API workflow integration tests."""
 
 from collections.abc import AsyncGenerator
-from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import get_settings
 from app.database import get_db_session
+from app.domain.dates import utc_today
 from app.embeddings.deps import get_embedding_provider
 from app.llm import get_llm_client
 from app.llm.groq_client import GroqLLMClient
@@ -181,7 +181,7 @@ async def test_ceo_demo_api_chain(integration_client: AsyncClient):
 
     follow_ups = await integration_client.get(
         "/api/v1/sales/follow-ups",
-        params={"status": "OPEN", "due_date": date.today().isoformat()},
+        params={"status": "OPEN", "due_date": utc_today().isoformat()},
     )
     assert follow_ups.status_code == 200
     assert follow_ups.json()["total"] >= 1
@@ -197,7 +197,7 @@ async def test_ceo_demo_api_chain(integration_client: AsyncClient):
 
     open_today = await integration_client.get(
         "/api/v1/sales/follow-ups",
-        params={"status": "OPEN", "due_date": date.today().isoformat()},
+        params={"status": "OPEN", "due_date": utc_today().isoformat()},
     )
     assert open_today.json()["total"] == 0
 

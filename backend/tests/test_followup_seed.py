@@ -1,11 +1,11 @@
 """Demo sales follow-up seed tests."""
 
-from datetime import date
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import func, select
 
+from app.domain.dates import utc_today
 from app.models.quotation import Quotation
 from app.models.sales_follow_up import FollowUpStatus, SalesFollowUp
 from app.seed.catalog import seed_catalog
@@ -42,7 +42,7 @@ async def test_demo_follow_up_seed_creates_historical_opportunities(db_session):
     assert str(by_customer["Delta Automation"].priority) == "P2"
     assert by_customer["Delta Automation"].quotation_number == "Q-2026-0002"
     assert all(item.status == FollowUpStatus.OPEN for item in follow_ups)
-    assert all(item.follow_up_date == date.today() for item in follow_ups)
+    assert all(item.follow_up_date == utc_today() for item in follow_ups)
 
 
 @pytest.mark.asyncio
@@ -107,7 +107,7 @@ async def test_demo_follow_up_seed_does_not_duplicate_existing_abc(db_session):
             customer_name="ABC Manufacturing",
             customer_email="procurement@abcmanufacturing.example",
             quotation_number="Q-2026-0001",
-            follow_up_date=date.today(),
+            follow_up_date=utc_today(),
             priority=FollowUpPriority.P1,
             status=FollowUpStatus.OPEN,
         ),

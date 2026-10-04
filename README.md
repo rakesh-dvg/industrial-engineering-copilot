@@ -2,6 +2,28 @@
 
 **From Engineering Requirements to Product Decisions**
 
+Final project for the [2026 AI Dev Tools Zoomcamp](https://github.com/rakesh-dvg/industrial-engineering-copilot) (DataTalks.Club).
+
+## Problem and users
+
+Industrial distributors and automation **sales engineers** receive unstructured customer RFQs (email, PDF, portal). Translating language into specs, proving compliance, quoting, and following up is slow and hard to audit.
+
+**Target users:** sales engineers, application engineers, technical reviewers.
+
+**Business value:** One workflow from RFQ → validated recommendation → quotation → simulated customer communication → prioritized follow-ups, with **deterministic PASS/FAIL/UNKNOWN** engineering checks.
+
+**AI role:** Groq extracts requirements and drafts communication text. It does **not** override validation, recommendations, or pricing.
+
+**System boundary:**
+
+```text
+Groq → language (extract / draft)
+Deterministic services → compliance, ranking, quotation math
+Human sales → product choice, approval, send
+```
+
+**Example workflow:** Customer ABC requests 10 industrial Ethernet switches (24 VDC, 5+ ports, DIN rail, Modbus TCP, -20°C). NS-SW-005 **PASS** → recommended → quotation → demo email → P1 follow-up. VIS-SW-003 **FAIL**, AC-SW-008 **UNKNOWN**.
+
 ## What it does
 
 ```text
@@ -15,17 +37,7 @@ Customer RFQ
 → Sales follow-up queue (P0 / P1 / P2)
 ```
 
-Industrial Engineering Copilot helps industrial distributors and automation sales teams turn customer RFQs into validated product recommendations, quotations, and prioritized follow-ups — with deterministic engineering compliance and traceable evidence.
-
-## Business value
-
-Engineering validation and sales execution usually live in separate tools and email threads. This MVP connects them: sales sees which product **passes** the requirements, **why** (specs + evidence), what to **quote**, and which customers need **follow-up today**.
-
-The AI extracts language from RFQs; it does **not** override PASS/FAIL/UNKNOWN decisions.
-
 ## Demo
-
-**Customer:** ABC Manufacturing — 10 industrial Ethernet switches (24 VDC, 5+ ports, DIN rail, Modbus TCP, -20°C).
 
 | Product | Validation |
 |---------|------------|
@@ -33,90 +45,123 @@ The AI extracts language from RFQs; it does **not** override PASS/FAIL/UNKNOWN d
 | VIS-SW-003 | FAIL |
 | AC-SW-008 | UNKNOWN |
 
-After simulated email send, **Today's Sales Follow-ups** shows Apex (P0), ABC (P1), and Delta (P2) — Open Quotation Value **USD 14,500**.
-
-Full walkthrough: [docs/CEO-demo-script.md](docs/CEO-demo-script.md)
+Walkthrough: [docs/CEO-demo-script.md](docs/CEO-demo-script.md)
 
 ## Architecture
 
-- **Product design:** [docs/target-architecture.md](docs/target-architecture.md)
-- **AWS MVP deployment:** [docs/architecture.md](docs/architecture.md)
+**Local (current):**
 
-## Local startup
-
-**Prerequisites:** Docker, Python 3.12+, Node.js 22+, Groq API key in `.env`
-
-```powershell
-cp .env.example .env
-.\scripts\start-local.ps1
+```text
+React/Vite → FastAPI → SQLAlchemy → PostgreSQL
+FastAPI → Groq LLM (backend only)
 ```
 
-Then in two terminals:
+**Production-like local stack:** React build → **Nginx** (`frontend/nginx.conf.template`) → FastAPI.
 
-```powershell
-# Terminal 1 — backend
-cd backend
-.\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload --port 8020
+| Topic | Document |
+|-------|----------|
+| Logical product architecture | [docs/target-architecture.md](docs/target-architecture.md) |
+| Local + historical AWS diagrams | [docs/architecture.md](docs/architecture.md) |
+| Database & migrations | [docs/database.md](docs/database.md) |
+| API contract | [openapi.yaml](openapi.yaml) |
 
-# Terminal 2 — frontend
-cd frontend
-npm install
-npm run dev
-```
+> **AWS infrastructure used for the demonstration has been decommissioned.** The repository is reproducible locally with Docker Compose. Historical AWS steps: [docs/aws-mvp-deployment.md](docs/aws-mvp-deployment.md), [docs/deployment.md](docs/deployment.md).
 
-- Frontend: http://localhost:5173
-- API docs: http://localhost:8020/docs
+## Reproducibility (fresh clone)
 
-**Migrations before seeds:** `alembic upgrade head` → `python -m app.seed.catalog` → `python -m app.seed.followups` → `python -m app.seed.documents`
+1. Clone the repository
+2. Copy environment template: `cp .env.example .env` (set `GROQ_API_KEY` for live RFQ extract)
+3. Install prerequisites: Docker, Python 3.12+, Node.js 22+
+4. Start infrastructure: `docker compose up -d postgres redis minio`
+5. Backend setup:
 
-Reset local demo data: `.\scripts\reset-demo.ps1`
+   ```powershell
+   cd backend
+   pip install -e ".[dev]"
+   alembic upgrade head
+   python -m app.seed.catalog
+   python -m app.seed.followups
+   python -m app.seed.documents
+   uvicorn app.main:app --reload --port 8020
+   ```
 
-## AWS MVP deployment
+6. Frontend: `cd frontend && npm install && npm run dev`
+7. Open http://localhost:5173 — API http://localhost:8020/docs
+8. Run tests (see [docs/testing.md](docs/testing.md))
 
-Deploy to AWS for a single public CEO demo URL (ECS Fargate + ALB + RDS + S3):
+Shortcut: `.\scripts\start-local.ps1` · Reset demo data: `.\scripts\reset-demo.ps1`
 
-→ **[docs/aws-mvp-deployment.md](docs/aws-mvp-deployment.md)**
+**All-in Docker (dev):** `docker compose up --build` (frontend on http://localhost:5174).
 
-Production Docker files: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.prod.yml`
+**Prod-like compose:** `docker compose -f docker-compose.prod.yml up --build` (http://localhost:8080).
+
+Container files: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf.template`, `docker-compose.yml`, `docker-compose.prod.yml`.
 
 ## Testing
 
 ```powershell
-# Backend
+# Backend (PostgreSQL must be running)
 cd backend
 ruff check .
 pytest -q
 
-# Frontend
+# Frontend — 27 tests
 cd frontend
 npm run lint
 npm run test
 npm run build
 
 # OpenAPI contract
-cd ..
 python .github/scripts/check_openapi_paths.py
 ```
 
-## Limitations
+Details: [docs/testing.md](docs/testing.md) · CI: [docs/cicd.md](docs/cicd.md)
 
-MVP scope: simulated email, synthetic demo data, no CRM, no HA/autoscaling on AWS, Groq dependency.
+## AI-assisted development & agent extension pack
 
-→ [docs/limitations-roadmap.md](docs/limitations-roadmap.md)
+| Document | Purpose |
+|----------|---------|
+| [docs/ai-assisted-development.md](docs/ai-assisted-development.md) | How AI assistants built and debugged the project |
+| [docs/agent-extension-pack.md](docs/agent-extension-pack.md) | Module 5 — capabilities, MCP, hooks, custom agent |
+| [AGENTS.md](AGENTS.md) | Ongoing developer/agent instructions |
 
-## Future roadmap
+Artifacts: `agent-capabilities/`, `agent-hooks/`, `mcp-server/`, `custom-agent/`
 
-CRM integration, real email, PDF quotations, enterprise auth, production observability, infrastructure-as-code, autoscaling/HA — see [docs/limitations-roadmap.md](docs/limitations-roadmap.md).
+## Security and operations
 
-## Related documents
+[security/](security/) · [ops/](ops/) · [docs/permissions.md](docs/permissions.md)
+
+## Project rubric coverage
+
+| Rubric area | Primary evidence |
+|-------------|------------------|
+| Problem | This README + `product-spec.md` |
+| AI workflow | `docs/ai-assisted-development.md` |
+| Architecture | `docs/architecture.md` |
+| Frontend | `frontend/src/features/sales/` |
+| API | `openapi.yaml` |
+| Backend | `backend/app/` |
+| Database | `backend/alembic/` |
+| Containers | Dockerfiles + Compose |
+| Integration testing | `docs/testing.md` |
+| Deployment | `docs/deployment.md` (AWS historical) |
+| CI/CD | `.github/workflows/ci.yml` |
+| Agent extension | `agent-capabilities/`, `mcp-server/`, `custom-agent/` |
+| Security/Ops | `security/`, `ops/` |
+| Reproducibility | README + `.env.example` |
+
+Full checklist: [docs/final-rubric-checklist.md](docs/final-rubric-checklist.md)
+
+## Documentation index
 
 | Document | Purpose |
 |----------|---------|
 | [docs/CEO-presentation.md](docs/CEO-presentation.md) | Business narrative |
-| [docs/CEO-demo-script.md](docs/CEO-demo-script.md) | 3–5 minute demo script |
-| [docs/technical-decisions.md](docs/technical-decisions.md) | Why key choices were made |
-| [docs/aws-mvp-deployment.md](docs/aws-mvp-deployment.md) | Step-by-step AWS guide |
-| [docs/screenshots/README.md](docs/screenshots/README.md) | Manual screenshot checklist |
-| [AGENTS.md](AGENTS.md) | Agent/developer instructions |
-| [openapi.yaml](openapi.yaml) | API contract |
+| [docs/CEO-demo-script.md](docs/CEO-demo-script.md) | Demo script |
+| [docs/technical-decisions.md](docs/technical-decisions.md) | Key technical choices |
+| [docs/limitations-roadmap.md](docs/limitations-roadmap.md) | MVP limits and roadmap |
+| [docs/screenshots/README.md](docs/screenshots/README.md) | Screenshot checklist |
+
+## Limitations
+
+Simulated email, synthetic catalog, Groq dependency, no CRM/HA. See [docs/limitations-roadmap.md](docs/limitations-roadmap.md).

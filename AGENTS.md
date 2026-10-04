@@ -108,7 +108,7 @@ Human Sales → final approval
 ### Implemented in Phase 10
 
 - Production Docker images (FastAPI backend, Nginx frontend SPA)
-- `docker-compose.prod.yml`, `frontend/nginx.conf`, `.dockerignore`
+- `docker-compose.prod.yml`, `frontend/nginx.conf.template`, `.dockerignore`
 - AWS MVP deployment guide (`docs/aws-mvp-deployment.md`) — ECR, ECS Fargate, ALB, RDS, S3, Secrets Manager, CloudWatch
 - ECS task definition examples (`deploy/aws/`)
 - CEO packaging docs (presentation, demo script, architecture, limitations, technical decisions)

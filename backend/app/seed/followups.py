@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
+from app.domain.dates import utc_today
 from app.models.product import Product
 from app.models.quotation import Quotation, QuotationLineItem, QuotationStatus
 from app.models.quotation_communication import CommunicationStatus, QuotationCommunication
@@ -75,7 +76,7 @@ async def _ensure_demo_follow_up(session: AsyncSession, seed: DemoFollowUpSeed) 
     )
     if quotation is not None:
         if quotation.follow_up is not None and quotation.follow_up.status == FollowUpStatus.OPEN:
-            quotation.follow_up.follow_up_date = date.today()
+            quotation.follow_up.follow_up_date = utc_today()
             quotation.follow_up.priority = seed.priority
         return
 
@@ -148,7 +149,7 @@ async def _ensure_demo_follow_up(session: AsyncSession, seed: DemoFollowUpSeed) 
             customer_name=seed.customer_name,
             customer_email=seed.customer_email,
             quotation_number=seed.quotation_number,
-            follow_up_date=date.today(),
+            follow_up_date=utc_today(),
             priority=seed.priority,
             status=FollowUpStatus.OPEN,
             notes=seed.notes,

@@ -1,0 +1,18 @@
+[project]
+name = "iec-mcp-server"
+version = "0.1.0"
+description = "Demo MCP tools for Industrial Engineering Copilot (in-memory catalog only)"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.6.0",
+]
+
+[project.scripts]
+iec-mcp = "iec_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["iec_mcp"]

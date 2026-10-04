@@ -1,12 +1,11 @@
 """Phase 8.5 quotation communication and follow-up tests."""
 
-from datetime import date
-
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.domain.dates import utc_today
 from app.models.product import Product
 from app.models.quotation import QuotationStatus
 from app.models.sales_follow_up import FollowUpStatus
@@ -156,7 +155,7 @@ async def test_follow_up_created_after_send(db_session):
     assert item.customer_name == "ABC Manufacturing"
     assert item.priority.value == "P1"
     assert item.status.value == "OPEN"
-    assert item.follow_up_date == date.today()
+    assert item.follow_up_date == utc_today()
 
 
 @pytest.mark.asyncio
@@ -189,7 +188,7 @@ async def test_completed_follow_up_excluded_from_today_open_queue(db_session):
     open_today = await list_follow_ups(
         db_session,
         status_filter=FollowUpStatus.OPEN,
-        due_date=date.today(),
+        due_date=utc_today(),
     )
     assert open_today.total == 0
 
@@ -266,7 +265,7 @@ async def test_communication_api_flow(seeded_client):
 
     follow_ups = await seeded_client.get(
         "/api/v1/sales/follow-ups",
-        params={"status": "OPEN", "due_date": date.today().isoformat()},
+        params={"status": "OPEN", "due_date": utc_today().isoformat()},
     )
     assert follow_ups.status_code == 200
     assert follow_ups.json()["total"] >= 1
@@ -286,7 +285,7 @@ async def test_communication_api_flow(seeded_client):
 
     open_today = await seeded_client.get(
         "/api/v1/sales/follow-ups",
-        params={"status": "OPEN", "due_date": date.today().isoformat()},
+        params={"status": "OPEN", "due_date": utc_today().isoformat()},
     )
     assert open_today.json()["total"] == 0
 

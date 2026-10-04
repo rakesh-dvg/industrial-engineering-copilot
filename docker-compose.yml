@@ -65,7 +65,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       CORS_ORIGINS: '["http://localhost:5174","http://127.0.0.1:5174"]'
       GROQ_MODEL: openai/gpt-oss-120b
-      GROQ_BASE_URL: https://api.groq.com/openai/v1
+      GROQ_BASE_URL: https://api.groq.com
     ports:
       - "8020:8000"
     depends_on:

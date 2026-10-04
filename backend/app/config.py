@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-120b"
-    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_base_url: str = "https://api.groq.com"
 
     run_groq_integration_tests: bool = False
 

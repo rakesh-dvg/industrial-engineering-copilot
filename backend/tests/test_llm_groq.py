@@ -10,6 +10,7 @@ from app.config import Settings
 from app.llm.base import TextGenerationRequest
 from app.llm.config import (
     get_groq_settings,
+    normalize_groq_base_url,
     require_groq_configuration,
     validate_groq_configuration,
 )
@@ -47,7 +48,7 @@ def mock_groq_client() -> MagicMock:
 def test_default_groq_model_and_base_url() -> None:
     settings = Settings()
     assert settings.groq_model == "openai/gpt-oss-120b"
-    assert settings.groq_base_url == "https://api.groq.com/openai/v1"
+    assert settings.groq_base_url == "https://api.groq.com"
 
 
 def test_missing_api_key_reported_by_validation() -> None:
@@ -75,7 +76,13 @@ def test_get_groq_settings_strips_api_key(groq_settings: Settings) -> None:
 
     assert resolved.api_key == "test-groq-key"
     assert resolved.model == "openai/gpt-oss-120b"
-    assert resolved.base_url == "https://api.groq.com/openai/v1"
+    assert resolved.base_url == "https://api.groq.com"
+
+
+def test_normalize_groq_base_url_strips_duplicate_openai_suffix() -> None:
+    assert normalize_groq_base_url("https://api.groq.com/openai/v1") == "https://api.groq.com"
+    assert normalize_groq_base_url("https://api.groq.com/openai/v1/") == "https://api.groq.com"
+    assert normalize_groq_base_url("https://api.groq.com") == "https://api.groq.com"
 
 
 def test_generate_text_request_is_constructed_correctly(

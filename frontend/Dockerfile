@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 
-# Empty default: browser calls same-origin /api/* through the ALB.
+# Empty default: browser calls same-origin /api/*; nginx proxies to BACKEND_API_URL.
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
@@ -15,7 +15,11 @@ RUN npm run build
 
 FROM nginx:1.27-alpine AS production
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Rendered at container start via /docker-entrypoint.d/20-envsubst-on-templates.sh
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# Override at run time (e.g. http://<ecs-public-ip>:8000). Ephemeral ECS IPs require
+# updating this env and restarting the frontend task when the backend address changes.
+ENV BACKEND_API_URL=http://127.0.0.1:8000
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

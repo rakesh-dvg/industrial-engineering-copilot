@@ -42,3 +42,8 @@ postgres_data/
 minio_data/
 
 *.tsbuildinfo
+# AWS live deployment artifacts
+IECSecretsManagerRead-updated.json
+deploy/aws/*-live.json
+deploy/aws/ecs-backend-task-definition-v*.json
+deploy/aws/ecs-frontend-task-definition.json

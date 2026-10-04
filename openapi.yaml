@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: Industrial Engineering Copilot API
+  version: 0.1.0
+  description: |
+    From Engineering Requirements to Product Decisions.
+
+    Phase 1 exposes health endpoints and foundational schemas. Product, RFQ,
+    recommendation, and document endpoints are defined in later phases.
+  contact:
+    name: Industrial Engineering Copilot
+servers:
+  - url: http://localhost:8000
+    description: Local development
+tags:
+  - name: Health
+    description: Service health and dependency checks
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Root health check
+      operationId: getRootHealth
+      responses:
+        "200":
+          description: Application is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: API health check with dependency status
+      operationId: getApiHealth
+      responses:
+        "200":
+          description: API health including database connectivity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiHealthResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, service, version, environment]
+      properties:
+        status:
+          type: string
+          examples: [ok]
+        service:
+          type: string
+          examples: [Industrial Engineering Copilot]
+        version:
+          type: string
+          examples: ["0.1.0"]
+        environment:
+          type: string
+          examples: [development]
+    DependencyHealth:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unavailable]
+        message:
+          type: string
+          nullable: true
+    ApiHealthResponse:
+      allOf:
+        - $ref: "#/components/schemas/HealthStatus"
+        - type: object
+          required: [dependencies]
+          properties:
+            dependencies:
+              type: object
+              additionalProperties:
+                $ref: "#/components/schemas/DependencyHealth"
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+    Organization:
+      type: object
+      description: Tenant organization (Phase 1 foundation schema)
+      required: [id, name, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        settings:
+          type: object
+          additionalProperties: true
+    User:
+      type: object
+      description: Authenticated user (Phase 1 foundation schema)
+      required: [id, email, display_name, is_active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        is_active:
+          type: boolean
+    OrganizationMember:
+      type: object
+      description: Organization membership with RBAC role
+      required: [id, organization_id, user_id, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [admin, engineer, sales, reviewer, viewer]

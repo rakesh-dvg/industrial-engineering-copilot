@@ -10,14 +10,34 @@ export function AppLayout() {
         </div>
         <nav className="app-nav" aria-label="Primary">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : undefined)}>
-            Dashboard
+            Sales
+          </NavLink>
+          <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Catalog
+          </NavLink>
+          <NavLink
+            to="/validation"
+            className={({ isActive }) => (isActive ? "active" : undefined)}
+          >
+            Validation
+          </NavLink>
+          <NavLink
+            to="/quotation"
+            className={({ isActive }) => (isActive ? "active" : undefined)}
+          >
+            Quotations
+          </NavLink>
+          <NavLink to="/rfq" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            RFQ Extract
           </NavLink>
         </nav>
       </header>
       <main className="app-main">
         <Outlet />
       </main>
-      <footer className="app-footer">Phase 1 foundation — product intelligence coming later.</footer>
+      <footer className="app-footer">
+        Phase 5A recommendation — RFQ to validated quotation with sales decision control.
+      </footer>
     </div>
   );
 }

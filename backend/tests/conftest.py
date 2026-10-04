@@ -4,11 +4,15 @@ from collections.abc import AsyncGenerator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import get_settings
 from app.database import Base, get_db_session
+from app.embeddings.deps import get_embedding_provider
 from app.main import create_app
+from app.seed.catalog import seed_catalog
+from app.seed.documents import seed_product_datasheets
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -25,6 +29,7 @@ def anyio_backend() -> str:
 async def db_engine():
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
@@ -57,3 +62,51 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides.clear()
     get_settings.cache_clear()
+    get_embedding_provider.cache_clear()
+
+
+@pytest_asyncio.fixture
+async def seeded_client(db_engine) -> AsyncGenerator[AsyncClient, None]:
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False, class_=AsyncSession)
+    async with session_factory() as session:
+        await seed_catalog(session)
+
+    app = create_app()
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    get_settings.cache_clear()
+    get_embedding_provider.cache_clear()
+
+
+@pytest_asyncio.fixture
+async def seeded_client_with_documents(db_engine) -> AsyncGenerator[AsyncClient, None]:
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False, class_=AsyncSession)
+    async with session_factory() as session:
+        await seed_catalog(session)
+        await seed_product_datasheets(session)
+
+    app = create_app()
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    get_settings.cache_clear()
+    get_embedding_provider.cache_clear()

@@ -1,1 +1,1 @@
-"""Document ingestion pipeline — future phases."""
+"""Document ingestion pipeline for Phase 6 datasheet RAG."""

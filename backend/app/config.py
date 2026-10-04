@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Repo-root .env (local dev) and backend/.env (optional override).
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -43,6 +44,9 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
 
     run_groq_integration_tests: bool = False
+
+    embedding_provider: str = "deterministic"
+    embedding_dimensions: int = 384
 
 
 @lru_cache
